@@ -18,6 +18,8 @@
     --verify-bg: #3a2c0d;
     --error: #ff4d4f;
     --error-bg: #3a1414;
+    --stale: #8a97a6;
+    --stale-bg: #1c2530;
     --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   }
 
@@ -49,7 +51,7 @@
   }
 
   main {
-    max-width: 960px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 24px;
   }
@@ -68,6 +70,212 @@
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0.08em;
+  }
+
+  /* --- Cell wall --- */
+  .cell-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 16px;
+  }
+
+  .cell-card {
+    background: #0e141b;
+    border: 2px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .cell-card.changed {
+    border-color: var(--verify);
+    box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.25);
+  }
+
+  .cell-card.flash {
+    animation: cellFlash 0.7s ease;
+  }
+
+  @keyframes cellFlash {
+    0% { background: rgba(245, 166, 35, 0.35); }
+    100% { background: #0e141b; }
+  }
+
+  .cell-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .cell-number {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+  }
+
+  .status-dot-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .status-dot.MONITORING { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .status-dot.VERIFY { background: var(--verify); box-shadow: 0 0 6px var(--verify); }
+  .status-dot.STALE { background: var(--stale); box-shadow: none; }
+
+  .status-dot-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+  }
+
+  .cell-values {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .cell-value-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .cell-value-line .label {
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  .cell-awaiting {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 22px 0;
+  }
+
+  .cell-meta {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--panel-border);
+    padding-top: 8px;
+    margin-top: 4px;
+  }
+
+  /* --- Event log --- */
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
+  .event-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .event-row:last-child { border-bottom: none; }
+
+  .event-time { color: var(--text-dim); }
+  .event-cell { color: var(--text); font-weight: 700; }
+  .event-detail { color: var(--text); }
+
+  .event-row.STATE_CHANGE .event-detail { color: var(--verify); font-weight: 700; }
+  .event-row.DATA_QUALITY .event-detail { color: var(--error); font-weight: 700; }
+
+  .no-events {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 18px 0;
+    font-size: 0.95rem;
+  }
+
+  /* --- Simulator panel --- */
+  .simulator-panel summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .simulator-panel summary::-webkit-details-marker { display: none; }
+
+  .simulator-panel summary h2 { margin: 0; }
+
+  .sim-tag {
+    display: inline-block;
+    background: repeating-linear-gradient(
+      45deg,
+      #3a2c0d,
+      #3a2c0d 6px,
+      #2a2109 6px,
+      #2a2109 12px
+    );
+    border: 1px solid var(--verify);
+    color: var(--verify);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+
+  .sim-note {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin: 4px 0 18px;
+  }
+
+  .sim-body { margin-top: 18px; }
+
+  .cell-select-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .cell-select-row label {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  select {
+    background: #0e141b;
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 1rem;
   }
 
   /* --- Drop zone --- */
@@ -129,8 +337,8 @@
   }
 
   .preview-row img {
-    max-width: 220px;
-    max-height: 220px;
+    max-width: 180px;
+    max-height: 180px;
     border-radius: 8px;
     border: 1px solid var(--panel-border);
   }
@@ -140,132 +348,98 @@
     font-size: 0.9rem;
   }
 
-  .analyse-btn {
+  .sim-actions {
+    display: flex;
+    gap: 12px;
     margin-top: 20px;
-    background: var(--ok);
-    color: #06231a;
-    border: none;
-    border-radius: 8px;
-    padding: 16px 28px;
-    font-size: 1.2rem;
-    font-weight: 700;
-    cursor: pointer;
-    width: 100%;
+    flex-wrap: wrap;
   }
 
-  .analyse-btn:disabled {
+  .sim-btn {
+    flex: 1;
+    min-width: 180px;
+    border: none;
+    border-radius: 8px;
+    padding: 16px 22px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .sim-btn.send-btn { background: var(--accent); color: #06121c; }
+
+  .sim-btn.continuous-btn { background: #2a3542; color: var(--text); border: 2px solid var(--panel-border); }
+
+  .sim-btn.continuous-btn.running {
+    background: var(--verify-bg);
+    color: var(--verify);
+    border-color: var(--verify);
+  }
+
+  .sim-btn:disabled {
     background: #3a4650;
     color: #7a8894;
     cursor: not-allowed;
+    border-color: transparent;
   }
 
-  /* --- Result panel --- */
-  .result-panel { min-height: 140px; }
-
-  .placeholder {
-    color: var(--text-dim);
-    font-size: 1.05rem;
-    text-align: center;
-    padding: 30px 0;
-  }
-
-  .spinner-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    padding: 30px 0;
-  }
-
-  .spinner {
-    width: 48px;
-    height: 48px;
-    border: 5px solid var(--panel-border);
-    border-top-color: var(--accent);
+  .live-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    background: var(--verify);
+    margin-right: 6px;
+    animation: livePulse 1s ease-in-out infinite;
   }
 
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .spinner-wrap span {
-    font-size: 1.1rem;
-    color: var(--text);
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
   }
 
-  .badge {
-    display: block;
-    text-align: center;
-    font-size: 1.8rem;
-    font-weight: 800;
-    letter-spacing: 0.03em;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
+  .send-status {
+    margin-top: 16px;
   }
 
-  .badge.OK { background: var(--ok-bg); color: var(--ok); border: 2px solid var(--ok); }
-  .badge.VERIFY { background: var(--verify-bg); color: var(--verify); border: 2px solid var(--verify); }
-  .badge.ERROR { background: var(--error-bg); color: var(--error); border: 2px solid var(--error); }
-
-  .reading-lines {
-    display: grid;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .reading-line {
-    font-size: 1.6rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    display: flex;
-    justify-content: space-between;
-    background: #0e141b;
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    padding: 14px 18px;
-  }
-
-  .reading-line .label { color: var(--text-dim); font-size: 1rem; align-self: center; }
-  .reading-line .value { color: var(--text); }
-
-  .reasons {
-    background: #0e141b;
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    padding: 14px 18px;
-    margin-bottom: 12px;
-  }
-
-  .reasons h3 {
-    margin: 0 0 8px;
-    font-size: 0.9rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .reasons ul {
-    margin: 0;
-    padding-left: 20px;
-    color: var(--text);
-  }
-
-  .footer-line {
-    color: var(--text-dim);
-    font-size: 0.85rem;
-    margin-top: 8px;
-  }
-
-  .error-card {
+  .send-status .error-card {
     background: var(--error-bg);
     border: 2px solid var(--error);
     border-radius: 8px;
-    padding: 18px;
+    padding: 14px 18px;
     color: #ffd7d7;
   }
 
-  .error-card strong { display: block; margin-bottom: 6px; font-size: 1.1rem; }
+  .send-status .error-card strong { display: block; margin-bottom: 4px; }
+
+  .send-status .ok-note {
+    background: var(--ok-bg);
+    border: 1px solid var(--ok);
+    color: var(--ok);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+
+  .send-status .pending-note {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  .spinner {
+    width: 22px;
+    height: 22px;
+    border: 4px solid var(--panel-border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .dev-json {
     margin-top: 16px;
@@ -290,84 +464,10 @@
     letter-spacing: 0.06em;
   }
 
-  /* --- History table --- */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.95rem;
-  }
-
-  thead th {
-    text-align: left;
-    color: var(--text-dim);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--panel-border);
-    padding: 8px 10px;
-  }
-
-  tbody td {
-    padding: 10px;
-    border-bottom: 1px solid var(--panel-border);
-    vertical-align: middle;
-  }
-
-  tbody tr:last-child td { border-bottom: none; }
-
-  .thumb {
-    width: 56px;
-    height: 56px;
-    object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid var(--panel-border);
-  }
-
-  .status-pill {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-  }
-
-  .status-pill.OK { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
-  .status-pill.VERIFY { background: var(--verify-bg); color: var(--verify); border: 1px solid var(--verify); }
-  .status-pill.ERROR { background: var(--error-bg); color: var(--error); border: 1px solid var(--error); }
-
-  .no-history {
-    color: var(--text-dim);
-    text-align: center;
-    padding: 20px 0;
-  }
-
   @media (max-width: 640px) {
     .titlebar h1 { font-size: 1.4rem; }
-    .badge { font-size: 1.3rem; }
-    .reading-line { font-size: 1.15rem; flex-direction: column; align-items: flex-start; gap: 4px; }
-    table, thead, tbody, tr, td, th { display: block; }
-    thead { display: none; }
-    tbody tr {
-      border: 1px solid var(--panel-border);
-      border-radius: 8px;
-      margin-bottom: 10px;
-      padding: 8px;
-    }
-    tbody td {
-      border-bottom: none;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 4px;
-    }
-    tbody td::before {
-      content: attr(data-label);
-      color: var(--text-dim);
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      margin-right: 10px;
-    }
+    .cell-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    .sim-actions { flex-direction: column; }
   }
 </style>
 </head>
@@ -381,43 +481,58 @@
 <main>
 
   <section class="panel">
-    <h2>Input</h2>
-
-    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop froth image or choose a file">
-      <strong>Drop froth image here</strong>
-      <span>JPG or PNG, up to 5&nbsp;MB</span>
-      <br>
-      <button type="button" class="choose-btn" id="chooseBtn">Choose image</button>
-      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
-    </div>
-
-    <div id="inputError" class="inline-error" style="display:none;"></div>
-
-    <div id="previewRow" class="preview-row" style="display:none;">
-      <img id="previewImg" alt="Selected froth image preview">
-      <div class="file-meta" id="fileMeta"></div>
-    </div>
-
-    <button type="button" class="analyse-btn" id="analyseBtn" disabled>Analyse froth</button>
-  </section>
-
-  <section class="panel result-panel">
-    <h2>Reading</h2>
-    <div id="resultContent">
-      <div class="placeholder">No reading yet. Select an image and press Analyse froth.</div>
-    </div>
-    <div id="devJson" style="display:none;">
-      <div class="dev-json-label">Raw response (developer mode — press D to hide)</div>
-      <pre class="dev-json" id="devJsonContent"></pre>
-    </div>
+    <h2>Cell Wall</h2>
+    <div id="cellGrid" class="cell-grid"></div>
   </section>
 
   <section class="panel">
-    <h2>Session History</h2>
-    <div id="historyWrap">
-      <div class="no-history">No readings yet this session.</div>
+    <h2>Event Log</h2>
+    <div id="eventLogWrap">
+      <div class="no-events">No events — all cells stable.</div>
     </div>
   </section>
+
+  <details class="panel simulator-panel" id="simulatorPanel">
+    <summary>
+      <h2>Feed Simulator</h2>
+      <span class="sim-tag">Simulator — not a live feed</span>
+    </summary>
+    <p class="sim-note">No live camera is connected. This panel stands in for one so a frame can be sent to any cell on demand.</p>
+
+    <div class="sim-body">
+      <div class="cell-select-row">
+        <label for="cellSelect">Target cell</label>
+        <select id="cellSelect"></select>
+      </div>
+
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop froth image or choose a file">
+        <strong>Drop froth image here</strong>
+        <span>JPG or PNG, up to 5&nbsp;MB</span>
+        <br>
+        <button type="button" class="choose-btn" id="chooseBtn">Choose image</button>
+        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+      </div>
+
+      <div id="inputError" class="inline-error" style="display:none;"></div>
+
+      <div id="previewRow" class="preview-row" style="display:none;">
+        <img id="previewImg" alt="Selected froth image preview">
+        <div class="file-meta" id="fileMeta"></div>
+      </div>
+
+      <div class="sim-actions">
+        <button type="button" class="sim-btn send-btn" id="sendBtn" disabled>Send frame</button>
+        <button type="button" class="sim-btn continuous-btn" id="continuousBtn" disabled>Run continuous (every 5s)</button>
+      </div>
+
+      <div class="send-status" id="sendStatus"></div>
+
+      <div id="devJson" style="display:none;">
+        <div class="dev-json-label">Raw response (developer mode — press D to hide)</div>
+        <pre class="dev-json" id="devJsonContent"></pre>
+      </div>
+    </div>
+  </details>
 
 </main>
 
@@ -425,11 +540,20 @@
 (function () {
   "use strict";
 
+  var CELLS = ["01", "02", "03", "04"];
+
   var WEBHOOK_URL = "https://bandile17.app.n8n.cloud/webhook/froth";
   var MAX_SIZE = 5 * 1024 * 1024;
   var ALLOWED_TYPES = ["image/jpeg", "image/png"];
   var TIMEOUT_MS = 30000;
+  var CONTINUOUS_INTERVAL_MS = 5000;
+  var CHANGED_HOLD_MS = 30000;
+  var STALE_AFTER_MS = 20000;
+  var MAX_EVENT_ROWS = 50;
 
+  var cellGrid = document.getElementById("cellGrid");
+  var eventLogWrap = document.getElementById("eventLogWrap");
+  var cellSelect = document.getElementById("cellSelect");
   var dropzone = document.getElementById("dropzone");
   var fileInput = document.getElementById("fileInput");
   var chooseBtn = document.getElementById("chooseBtn");
@@ -437,19 +561,163 @@
   var previewRow = document.getElementById("previewRow");
   var previewImg = document.getElementById("previewImg");
   var fileMeta = document.getElementById("fileMeta");
-  var analyseBtn = document.getElementById("analyseBtn");
-  var resultContent = document.getElementById("resultContent");
+  var sendBtn = document.getElementById("sendBtn");
+  var continuousBtn = document.getElementById("continuousBtn");
+  var sendStatus = document.getElementById("sendStatus");
   var devJson = document.getElementById("devJson");
   var devJsonContent = document.getElementById("devJsonContent");
-  var historyWrap = document.getElementById("historyWrap");
 
-  var selectedFile = null;
+  var cellStates = {};
+  CELLS.forEach(function (c) {
+    cellStates[c] = {
+      cell: c,
+      size: null,
+      colour: null,
+      readingStatus: null,
+      lastFrameAt: null,
+      changedUntil: null,
+      flashPending: false
+    };
+  });
+
+  var eventLog = [];
   var selectedBase64 = null;
-  var isRequestRunning = false;
+  var isSendRunning = false;
+  var continuousTimer = null;
   var devMode = false;
   var lastRawResponse = null;
-  var history = [];
 
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function pad2(n) { return n < 10 ? "0" + n : String(n); }
+
+  function formatClockTime(dateOrNull) {
+    var d = dateOrNull instanceof Date && !isNaN(dateOrNull.getTime()) ? dateOrNull : new Date();
+    return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
+  }
+
+  function formatElapsed(ms) {
+    if (ms == null) return "—";
+    var s = Math.floor(ms / 1000);
+    if (s < 60) return s + "s ago";
+    var m = Math.floor(s / 60);
+    var rem = s % 60;
+    if (m < 60) return m + "m " + rem + "s ago";
+    var h = Math.floor(m / 60);
+    var remM = m % 60;
+    return h + "h " + remM + "m ago";
+  }
+
+  function safeUpper(v) {
+    return v == null ? null : String(v).toUpperCase();
+  }
+
+  // --- Cell select dropdown ---
+  CELLS.forEach(function (c) {
+    var opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = "Cell " + c;
+    cellSelect.appendChild(opt);
+  });
+
+  // --- Cell wall rendering ---
+  function computeStatus(state, now) {
+    if (state.lastFrameAt == null) return null; // awaiting feed
+    var age = now - state.lastFrameAt;
+    if (age > STALE_AFTER_MS) return "STALE";
+    if (state.readingStatus === "VERIFY") return "VERIFY";
+    if (state.readingStatus === "OK") return "MONITORING";
+    return "STALE"; // ERROR or unknown reading status degrades to STALE
+  }
+
+  function renderCellWall() {
+    var now = Date.now();
+    var html = CELLS.map(function (c) {
+      var state = cellStates[c];
+      var isChanged = state.changedUntil != null && now < state.changedUntil;
+      var cardClasses = "cell-card" + (isChanged ? " changed" : "") + (state.flashPending ? " flash" : "");
+      state.flashPending = false;
+
+      if (state.lastFrameAt == null) {
+        return (
+          '<div class="' + cardClasses + '" data-cell="' + c + '">' +
+          '<div class="cell-card-head"><span class="cell-number">Cell ' + escapeHtml(c) + '</span>' +
+          '<span class="status-dot-row"><span class="status-dot STALE"></span>' +
+          '<span class="status-dot-label">Awaiting</span></span></div>' +
+          '<div class="cell-awaiting">AWAITING FEED</div>' +
+          "</div>"
+        );
+      }
+
+      var status = computeStatus(state, now);
+      var sizeText = state.size != null ? escapeHtml(safeUpper(state.size)) : "—";
+      var colourText = state.colour != null ? escapeHtml(safeUpper(state.colour)) : "—";
+      var elapsedText = formatElapsed(now - state.lastFrameAt);
+
+      return (
+        '<div class="' + cardClasses + '" data-cell="' + c + '">' +
+        '<div class="cell-card-head"><span class="cell-number">Cell ' + escapeHtml(c) + '</span>' +
+        '<span class="status-dot-row"><span class="status-dot ' + status + '"></span>' +
+        '<span class="status-dot-label">' + status + '</span></span></div>' +
+        '<div class="cell-values">' +
+        '<div class="cell-value-line"><span class="label">Size</span><span>' + sizeText + '</span></div>' +
+        '<div class="cell-value-line"><span class="label">Colour</span><span>' + colourText + '</span></div>' +
+        '</div>' +
+        '<div class="cell-meta">Last frame: ' + escapeHtml(elapsedText) + '</div>' +
+        '</div>'
+      );
+    }).join("");
+
+    cellGrid.innerHTML = html;
+  }
+
+  // --- Event log rendering ---
+  function formatEventDetail(ev) {
+    if (ev.dimension != null && ev.from != null && ev.to != null) {
+      return escapeHtml(String(ev.dimension)) + "  " +
+        escapeHtml(safeUpper(ev.from)) + " → " + escapeHtml(safeUpper(ev.to));
+    }
+    if (typeof ev.message === "string") return escapeHtml(ev.message);
+    if (typeof ev.reason === "string") return escapeHtml(ev.reason);
+    if (typeof ev.detail === "string") return escapeHtml(ev.detail);
+    return "Data quality issue";
+  }
+
+  function pushEvent(ev) {
+    eventLog.unshift(ev);
+    if (eventLog.length > MAX_EVENT_ROWS) eventLog.length = MAX_EVENT_ROWS;
+    renderEventLog();
+  }
+
+  function renderEventLog() {
+    if (eventLog.length === 0) {
+      eventLogWrap.innerHTML = '<div class="no-events">No events — all cells stable.</div>';
+      return;
+    }
+
+    var rows = eventLog.map(function (ev) {
+      var typeClass = (ev.type === "STATE_CHANGE" || ev.type === "DATA_QUALITY") ? ev.type : "OTHER";
+      return (
+        '<div class="event-row ' + typeClass + '">' +
+        '<span class="event-time">' + escapeHtml(ev.timeText) + '</span>' +
+        '<span class="event-cell">Cell ' + escapeHtml(ev.cell) + '</span>' +
+        '<span>&mdash;</span>' +
+        '<span class="event-detail">' + formatEventDetail(ev) + '</span>' +
+        '</div>'
+      );
+    }).join("");
+
+    eventLogWrap.innerHTML = '<div class="event-list">' + rows + '</div>';
+  }
+
+  // --- Ticking clock: elapsed time, expiring changed borders ---
+  setInterval(renderCellWall, 1000);
+
+  // --- Input handling (simulator drop zone) ---
   function showInputError(msg) {
     inputError.textContent = msg;
     inputError.style.display = "block";
@@ -460,16 +728,21 @@
     inputError.textContent = "";
   }
 
+  function formatBytes(bytes) {
+    return (bytes / 1024).toFixed(1) + " KB";
+  }
+
+  function updateActionButtons() {
+    var running = continuousTimer != null;
+    sendBtn.disabled = !selectedBase64 || isSendRunning || running;
+    continuousBtn.disabled = !selectedBase64;
+  }
+
   function resetSelection() {
-    selectedFile = null;
     selectedBase64 = null;
     previewRow.style.display = "none";
     previewImg.src = "";
-    analyseBtn.disabled = true;
-  }
-
-  function formatBytes(bytes) {
-    return (bytes / 1024).toFixed(1) + " KB";
+    updateActionButtons();
   }
 
   function handleFiles(files) {
@@ -497,12 +770,11 @@
     reader.onload = function (e) {
       var dataUrl = e.target.result;
       var base64 = dataUrl.substring(dataUrl.indexOf(",") + 1);
-      selectedFile = file;
       selectedBase64 = base64;
       previewImg.src = dataUrl;
       fileMeta.textContent = file.name + " — " + formatBytes(file.size);
       previewRow.style.display = "flex";
-      analyseBtn.disabled = isRequestRunning;
+      updateActionButtons();
     };
     reader.onerror = function () {
       showInputError("Could not read the selected file. Please try again.");
@@ -548,115 +820,29 @@
   });
 
   dropzone.addEventListener("drop", function (e) {
-    var files = e.dataTransfer.files;
-    handleFiles(files);
+    handleFiles(e.dataTransfer.files);
   });
 
-  function setRunning(running) {
-    isRequestRunning = running;
-    analyseBtn.disabled = running || !selectedBase64;
+  // --- Send status UI ---
+  function renderSendPending() {
+    sendStatus.innerHTML =
+      '<div class="pending-note"><div class="spinner"></div><span>Sending frame&hellip;</span></div>';
   }
 
-  function renderPlaceholder() {
-    resultContent.innerHTML = '<div class="placeholder">No reading yet. Select an image and press Analyse froth.</div>';
+  function renderSendOk(cell) {
+    sendStatus.innerHTML =
+      '<div class="ok-note">Frame sent to cell ' + escapeHtml(cell) + ' and reading received.</div>';
   }
 
-  function renderLoading() {
-    resultContent.innerHTML =
-      '<div class="spinner-wrap"><div class="spinner"></div><span>Analysing&hellip;</span></div>';
-  }
-
-  function renderErrorCard(message, httpStatus) {
+  function renderSendError(message, httpStatus) {
     var statusText = httpStatus ? " (HTTP " + httpStatus + ")" : "";
-    resultContent.innerHTML =
+    sendStatus.innerHTML =
       '<div class="error-card"><strong>NO READING</strong>' +
-      escapeHtml(message) + escapeHtml(statusText) + "</div>";
+      escapeHtml(message) + escapeHtml(statusText) + '</div>';
   }
 
-  function escapeHtml(str) {
-    var div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  function fmtObservationValue(obs) {
-    if (!obs || obs.class == null || obs.confidence == null) {
-      return "&mdash;";
-    }
-    return escapeHtml(String(obs.class).toUpperCase()) + " &mdash; " + escapeHtml(String(obs.confidence)) + "%";
-  }
-
-  function renderResult(data) {
-    var status = data.status;
-    var statusLabels = {
-      OK: "OK — reading confident",
-      VERIFY: "VERIFY — check by eye",
-      ERROR: "NO READING — retake image"
-    };
-    var badgeClass = (status === "OK" || status === "VERIFY" || status === "ERROR") ? status : "ERROR";
-    var badgeText = statusLabels[badgeClass];
-
-    var obs = data.observation || {};
-    var bubbleLine = fmtObservationValue(obs.bubble_size);
-    var colourLine = fmtObservationValue(obs.colour);
-
-    var reasonsHtml = "";
-    if (Array.isArray(data.reasons) && data.reasons.length > 0) {
-      reasonsHtml =
-        '<div class="reasons"><h3>Reasons</h3><ul>' +
-        data.reasons.map(function (r) { return "<li>" + escapeHtml(String(r)) + "</li>"; }).join("") +
-        "</ul></div>";
-    }
-
-    var versions = data.model_versions || {};
-    var sizeVer = versions.size != null ? escapeHtml(String(versions.size)) : "—";
-    var colourVer = versions.colour != null ? escapeHtml(String(versions.colour)) : "—";
-    var timeStr = "—";
-    if (data.time) {
-      var d = new Date(data.time);
-      timeStr = isNaN(d.getTime()) ? escapeHtml(String(data.time)) : d.toLocaleString();
-    }
-
-    resultContent.innerHTML =
-      '<div class="badge ' + badgeClass + '">' + badgeText + "</div>" +
-      '<div class="reading-lines">' +
-      '<div class="reading-line"><span class="label">BUBBLE SIZE</span><span class="value">' + bubbleLine + "</span></div>" +
-      '<div class="reading-line"><span class="label">COLOUR</span><span class="value">' + colourLine + "</span></div>" +
-      "</div>" +
-      reasonsHtml +
-      '<div class="footer-line">Model versions — size: ' + sizeVer + ", colour: " + colourVer +
-      " &middot; Reading time: " + timeStr + "</div>";
-  }
-
-  function addHistoryEntry(entry) {
-    history.unshift(entry);
-    renderHistory();
-  }
-
-  function renderHistory() {
-    if (history.length === 0) {
-      historyWrap.innerHTML = '<div class="no-history">No readings yet this session.</div>';
-      return;
-    }
-
-    var rows = history.map(function (h) {
-      var sizeText = h.bubbleClass ? escapeHtml(h.bubbleClass.toUpperCase()) + " (" + h.bubbleConf + "%)" : "—";
-      var colourText = h.colourClass ? escapeHtml(h.colourClass.toUpperCase()) + " (" + h.colourConf + "%)" : "—";
-      var statusClass = (h.status === "OK" || h.status === "VERIFY" || h.status === "ERROR") ? h.status : "ERROR";
-      return (
-        "<tr>" +
-        '<td data-label="Time">' + escapeHtml(h.timeLocal) + "</td>" +
-        '<td data-label="Image"><img class="thumb" src="' + h.thumb + '" alt="Froth thumbnail"></td>' +
-        '<td data-label="Size">' + sizeText + "</td>" +
-        '<td data-label="Colour">' + colourText + "</td>" +
-        '<td data-label="Status"><span class="status-pill ' + statusClass + '">' + escapeHtml(statusClass) + "</span></td>" +
-        "</tr>"
-      );
-    }).join("");
-
-    historyWrap.innerHTML =
-      "<table><thead><tr><th>Time</th><th>Image</th><th>Size</th><th>Colour</th><th>Status</th></tr></thead>" +
-      "<tbody>" + rows + "</tbody></table>";
+  function clearSendStatus() {
+    sendStatus.innerHTML = "";
   }
 
   function updateDevJsonView() {
@@ -671,26 +857,79 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "d" || e.key === "D") {
       var tag = (document.activeElement && document.activeElement.tagName) || "";
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       devMode = !devMode;
       updateDevJsonView();
     }
   });
 
-  function isValidResponse(data) {
-    return data && typeof data === "object" && "status" in data && "observation" in data;
+  // --- Applying a webhook response onto cell state / event log ---
+  function isPlainObject(v) {
+    return v != null && typeof v === "object" && !Array.isArray(v);
   }
 
-  analyseBtn.addEventListener("click", function () {
-    if (!selectedBase64 || isRequestRunning) return;
+  function applyResponse(requestedCell, data) {
+    var cell = (data && typeof data.cell === "string" && data.cell) ? data.cell : requestedCell;
+    var state = cellStates[cell];
+    if (!state) return; // unknown cell in response, nothing to render it onto
 
-    clearInputError();
-    setRunning(true);
-    renderLoading();
+    var now = Date.now();
+    var frameTime = now;
+    if (data && data.timestamp) {
+      var parsed = new Date(data.timestamp);
+      if (!isNaN(parsed.getTime())) frameTime = parsed.getTime();
+    }
+    state.lastFrameAt = frameTime;
+
+    if (data && isPlainObject(data.current)) {
+      if (data.current.size != null) state.size = data.current.size;
+      if (data.current.colour != null) state.colour = data.current.colour;
+    }
+
+    var readingStatus = null;
+    if (data && isPlainObject(data.reading) &&
+        (data.reading.status === "OK" || data.reading.status === "VERIFY" || data.reading.status === "ERROR")) {
+      readingStatus = data.reading.status;
+    } else {
+      readingStatus = "ERROR"; // missing/malformed reading degrades to ERROR, never crashes
+    }
+    state.readingStatus = readingStatus;
+
+    var events = (data && Array.isArray(data.events)) ? data.events : [];
+    if (events.length > 0) {
+      state.changedUntil = now + CHANGED_HOLD_MS;
+      state.flashPending = true;
+      events.forEach(function (ev) {
+        if (!isPlainObject(ev)) return;
+        var evCell = typeof ev.cell === "string" ? ev.cell : cell;
+        var timeSource = typeof ev.confirmed_at === "string" ? ev.confirmed_at : (data && data.timestamp);
+        var d = timeSource ? new Date(timeSource) : null;
+        pushEvent({
+          type: typeof ev.type === "string" ? ev.type : "OTHER",
+          cell: evCell,
+          dimension: typeof ev.dimension === "string" ? ev.dimension : null,
+          from: ev.from != null ? ev.from : null,
+          to: ev.to != null ? ev.to : null,
+          message: typeof ev.message === "string" ? ev.message : null,
+          reason: typeof ev.reason === "string" ? ev.reason : null,
+          detail: typeof ev.detail === "string" ? ev.detail : null,
+          timeText: formatClockTime(d && !isNaN(d.getTime()) ? d : null)
+        });
+      });
+    }
+
+    renderCellWall();
+  }
+
+  // --- Sending a frame ---
+  function sendFrame(cell, base64, isFromContinuous) {
+    if (isSendRunning) return;
+    isSendRunning = true;
+    updateActionButtons();
+    renderSendPending();
     lastRawResponse = null;
     updateDevJsonView();
 
-    var thumb = previewImg.src;
     var controller = new AbortController();
     var timedOut = false;
     var timer = setTimeout(function () {
@@ -701,7 +940,7 @@
     fetch(WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: selectedBase64 }),
+      body: JSON.stringify({ cell: cell, image: base64 }),
       signal: controller.signal
     })
       .then(function (response) {
@@ -715,17 +954,9 @@
         updateDevJsonView();
 
         if (!result.ok) {
-          renderErrorCard("The system returned an error.", result.status);
-          addHistoryEntry({
-            timeLocal: new Date().toLocaleString(),
-            thumb: thumb,
-            bubbleClass: null,
-            bubbleConf: null,
-            colourClass: null,
-            colourConf: null,
-            status: "ERROR"
-          });
-          setRunning(false);
+          renderSendError("The system returned an error.", result.status);
+          isSendRunning = false;
+          updateActionButtons();
           return;
         }
 
@@ -736,67 +967,71 @@
           data = null;
         }
 
-        if (!isValidResponse(data)) {
-          var malformed = {
-            status: "ERROR",
-            observation: { bubble_size: null, colour: null },
-            reasons: ["Malformed response from server"],
-            model_versions: {},
-            time: new Date().toISOString()
-          };
-          renderResult(malformed);
-          addHistoryEntry({
-            timeLocal: new Date().toLocaleString(),
-            thumb: thumb,
-            bubbleClass: null,
-            bubbleConf: null,
-            colourClass: null,
-            colourConf: null,
-            status: "ERROR"
-          });
-          setRunning(false);
-          return;
+        applyResponse(cell, data);
+
+        if (data == null) {
+          renderSendError("Malformed response from the system.");
+        } else {
+          renderSendOk(cell);
         }
 
-        renderResult(data);
-
-        var obs = data.observation || {};
-        var b = obs.bubble_size;
-        var c = obs.colour;
-        addHistoryEntry({
-          timeLocal: new Date().toLocaleString(),
-          thumb: thumb,
-          bubbleClass: b ? b.class : null,
-          bubbleConf: b ? b.confidence : null,
-          colourClass: c ? c.class : null,
-          colourConf: c ? c.confidence : null,
-          status: (data.status === "OK" || data.status === "VERIFY" || data.status === "ERROR") ? data.status : "ERROR"
-        });
-
-        setRunning(false);
+        isSendRunning = false;
+        updateActionButtons();
       })
-      .catch(function (err) {
+      .catch(function () {
         clearTimeout(timer);
         if (timedOut) {
-          renderErrorCard("No response from the system — try again");
+          renderSendError("No response from the system — try again");
         } else {
-          renderErrorCard("Network error — could not reach the analysis system.");
+          renderSendError("Network error — could not reach the analysis system.");
         }
-        addHistoryEntry({
-          timeLocal: new Date().toLocaleString(),
-          thumb: thumb,
-          bubbleClass: null,
-          bubbleConf: null,
-          colourClass: null,
-          colourConf: null,
-          status: "ERROR"
-        });
-        setRunning(false);
+        isSendRunning = false;
+        updateActionButtons();
       });
+  }
+
+  sendBtn.addEventListener("click", function () {
+    if (!selectedBase64) return;
+    clearInputError();
+    sendFrame(cellSelect.value, selectedBase64, false);
   });
 
-  renderPlaceholder();
-  renderHistory();
+  function stopContinuous() {
+    if (continuousTimer != null) {
+      clearInterval(continuousTimer);
+      continuousTimer = null;
+    }
+    continuousBtn.classList.remove("running");
+    continuousBtn.innerHTML = "Run continuous (every 5s)";
+    updateActionButtons();
+  }
+
+  function startContinuous() {
+    if (!selectedBase64) return;
+    continuousBtn.classList.add("running");
+    continuousBtn.innerHTML = '<span class="live-dot"></span>Stop continuous';
+    updateActionButtons();
+
+    var tick = function () {
+      if (!selectedBase64) return;
+      sendFrame(cellSelect.value, selectedBase64, true);
+    };
+
+    tick();
+    continuousTimer = setInterval(tick, CONTINUOUS_INTERVAL_MS);
+  }
+
+  continuousBtn.addEventListener("click", function () {
+    if (continuousTimer != null) {
+      stopContinuous();
+    } else {
+      startContinuous();
+    }
+  });
+
+  renderCellWall();
+  renderEventLog();
+  clearSendStatus();
 })();
 </script>
 
