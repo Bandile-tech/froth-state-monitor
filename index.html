@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Froth State Monitor — Flotation</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #131a22;
+    --panel-border: #263140;
+    --text: #e8eef4;
+    --text-dim: #93a3b3;
+    --accent: #3ba9ff;
+    --ok: #2ecc71;
+    --ok-bg: #123a24;
+    --verify: #f5a623;
+    --verify-bg: #3a2c0d;
+    --error: #ff4d4f;
+    --error-bg: #3a1414;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  .titlebar {
+    padding: 20px 24px 12px;
+    border-bottom: 2px solid var(--panel-border);
+  }
+
+  .titlebar h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    letter-spacing: 0.02em;
+  }
+
+  .titlebar p {
+    margin: 4px 0 0;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+  }
+
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .panel h2 {
+    margin: 0 0 14px;
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* --- Drop zone --- */
+  .dropzone {
+    border: 3px dashed var(--panel-border);
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    color: var(--text-dim);
+  }
+
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(59, 169, 255, 0.08);
+    color: var(--text);
+  }
+
+  .dropzone strong {
+    color: var(--text);
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+  }
+
+  .choose-btn {
+    margin-top: 16px;
+    background: var(--accent);
+    color: #06121c;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .choose-btn:hover { filter: brightness(1.1); }
+
+  #fileInput { display: none; }
+
+  .inline-error {
+    margin-top: 14px;
+    background: var(--error-bg);
+    border: 1px solid var(--error);
+    color: #ffd7d7;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+
+  .preview-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .preview-row img {
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+  }
+
+  .file-meta {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+
+  .analyse-btn {
+    margin-top: 20px;
+    background: var(--ok);
+    color: #06231a;
+    border: none;
+    border-radius: 8px;
+    padding: 16px 28px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  .analyse-btn:disabled {
+    background: #3a4650;
+    color: #7a8894;
+    cursor: not-allowed;
+  }
+
+  /* --- Result panel --- */
+  .result-panel { min-height: 140px; }
+
+  .placeholder {
+    color: var(--text-dim);
+    font-size: 1.05rem;
+    text-align: center;
+    padding: 30px 0;
+  }
+
+  .spinner-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 30px 0;
+  }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid var(--panel-border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .spinner-wrap span {
+    font-size: 1.1rem;
+    color: var(--text);
+  }
+
+  .badge {
+    display: block;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+
+  .badge.OK { background: var(--ok-bg); color: var(--ok); border: 2px solid var(--ok); }
+  .badge.VERIFY { background: var(--verify-bg); color: var(--verify); border: 2px solid var(--verify); }
+  .badge.ERROR { background: var(--error-bg); color: var(--error); border: 2px solid var(--error); }
+
+  .reading-lines {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .reading-line {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    display: flex;
+    justify-content: space-between;
+    background: #0e141b;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+
+  .reading-line .label { color: var(--text-dim); font-size: 1rem; align-self: center; }
+  .reading-line .value { color: var(--text); }
+
+  .reasons {
+    background: #0e141b;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+  }
+
+  .reasons h3 {
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .reasons ul {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--text);
+  }
+
+  .footer-line {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-top: 8px;
+  }
+
+  .error-card {
+    background: var(--error-bg);
+    border: 2px solid var(--error);
+    border-radius: 8px;
+    padding: 18px;
+    color: #ffd7d7;
+  }
+
+  .error-card strong { display: block; margin-bottom: 6px; font-size: 1.1rem; }
+
+  .dev-json {
+    margin-top: 16px;
+    background: #05080b;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: #9fd6ff;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow: auto;
+  }
+
+  .dev-json-label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* --- History table --- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+
+  thead th {
+    text-align: left;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--panel-border);
+    padding: 8px 10px;
+  }
+
+  tbody td {
+    padding: 10px;
+    border-bottom: 1px solid var(--panel-border);
+    vertical-align: middle;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  .thumb {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+  }
+
+  .status-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+
+  .status-pill.OK { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+  .status-pill.VERIFY { background: var(--verify-bg); color: var(--verify); border: 1px solid var(--verify); }
+  .status-pill.ERROR { background: var(--error-bg); color: var(--error); border: 1px solid var(--error); }
+
+  .no-history {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  @media (max-width: 640px) {
+    .titlebar h1 { font-size: 1.4rem; }
+    .badge { font-size: 1.3rem; }
+    .reading-line { font-size: 1.15rem; flex-direction: column; align-items: flex-start; gap: 4px; }
+    table, thead, tbody, tr, td, th { display: block; }
+    thead { display: none; }
+    tbody tr {
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      padding: 8px;
+    }
+    tbody td {
+      border-bottom: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 4px;
+    }
+    tbody td::before {
+      content: attr(data-label);
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      margin-right: 10px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <h1>Froth State Monitor — Flotation</h1>
+  <p>Froth state, not recovery.</p>
+</div>
+
+<main>
+
+  <section class="panel">
+    <h2>Input</h2>
+
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop froth image or choose a file">
+      <strong>Drop froth image here</strong>
+      <span>JPG or PNG, up to 5&nbsp;MB</span>
+      <br>
+      <button type="button" class="choose-btn" id="chooseBtn">Choose image</button>
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+    </div>
+
+    <div id="inputError" class="inline-error" style="display:none;"></div>
+
+    <div id="previewRow" class="preview-row" style="display:none;">
+      <img id="previewImg" alt="Selected froth image preview">
+      <div class="file-meta" id="fileMeta"></div>
+    </div>
+
+    <button type="button" class="analyse-btn" id="analyseBtn" disabled>Analyse froth</button>
+  </section>
+
+  <section class="panel result-panel">
+    <h2>Reading</h2>
+    <div id="resultContent">
+      <div class="placeholder">No reading yet. Select an image and press Analyse froth.</div>
+    </div>
+    <div id="devJson" style="display:none;">
+      <div class="dev-json-label">Raw response (developer mode — press D to hide)</div>
+      <pre class="dev-json" id="devJsonContent"></pre>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Session History</h2>
+    <div id="historyWrap">
+      <div class="no-history">No readings yet this session.</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var WEBHOOK_URL = "https://bandile17.app.n8n.cloud/webhook/froth";
+  var MAX_SIZE = 5 * 1024 * 1024;
+  var ALLOWED_TYPES = ["image/jpeg", "image/png"];
+  var TIMEOUT_MS = 30000;
+
+  var dropzone = document.getElementById("dropzone");
+  var fileInput = document.getElementById("fileInput");
+  var chooseBtn = document.getElementById("chooseBtn");
+  var inputError = document.getElementById("inputError");
+  var previewRow = document.getElementById("previewRow");
+  var previewImg = document.getElementById("previewImg");
+  var fileMeta = document.getElementById("fileMeta");
+  var analyseBtn = document.getElementById("analyseBtn");
+  var resultContent = document.getElementById("resultContent");
+  var devJson = document.getElementById("devJson");
+  var devJsonContent = document.getElementById("devJsonContent");
+  var historyWrap = document.getElementById("historyWrap");
+
+  var selectedFile = null;
+  var selectedBase64 = null;
+  var isRequestRunning = false;
+  var devMode = false;
+  var lastRawResponse = null;
+  var history = [];
+
+  function showInputError(msg) {
+    inputError.textContent = msg;
+    inputError.style.display = "block";
+  }
+
+  function clearInputError() {
+    inputError.style.display = "none";
+    inputError.textContent = "";
+  }
+
+  function resetSelection() {
+    selectedFile = null;
+    selectedBase64 = null;
+    previewRow.style.display = "none";
+    previewImg.src = "";
+    analyseBtn.disabled = true;
+  }
+
+  function formatBytes(bytes) {
+    return (bytes / 1024).toFixed(1) + " KB";
+  }
+
+  function handleFiles(files) {
+    clearInputError();
+    if (!files || files.length === 0) return;
+    var file = files[0];
+
+    var isAllowedType = ALLOWED_TYPES.indexOf(file.type) !== -1;
+    var nameLower = file.name.toLowerCase();
+    var hasAllowedExt = nameLower.endsWith(".jpg") || nameLower.endsWith(".jpeg") || nameLower.endsWith(".png");
+
+    if (!isAllowedType && !hasAllowedExt) {
+      showInputError("Unsupported file type. Please choose a JPG or PNG image.");
+      resetSelection();
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      showInputError("File is too large (" + formatBytes(file.size) + "). Maximum size is 5 MB.");
+      resetSelection();
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var dataUrl = e.target.result;
+      var base64 = dataUrl.substring(dataUrl.indexOf(",") + 1);
+      selectedFile = file;
+      selectedBase64 = base64;
+      previewImg.src = dataUrl;
+      fileMeta.textContent = file.name + " — " + formatBytes(file.size);
+      previewRow.style.display = "flex";
+      analyseBtn.disabled = isRequestRunning;
+    };
+    reader.onerror = function () {
+      showInputError("Could not read the selected file. Please try again.");
+      resetSelection();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  chooseBtn.addEventListener("click", function () {
+    fileInput.click();
+  });
+
+  dropzone.addEventListener("click", function (e) {
+    if (e.target !== chooseBtn) fileInput.click();
+  });
+
+  dropzone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener("change", function () {
+    handleFiles(fileInput.files);
+    fileInput.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add("dragover");
+    });
+  });
+
+  ["dragleave", "drop"].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove("dragover");
+    });
+  });
+
+  dropzone.addEventListener("drop", function (e) {
+    var files = e.dataTransfer.files;
+    handleFiles(files);
+  });
+
+  function setRunning(running) {
+    isRequestRunning = running;
+    analyseBtn.disabled = running || !selectedBase64;
+  }
+
+  function renderPlaceholder() {
+    resultContent.innerHTML = '<div class="placeholder">No reading yet. Select an image and press Analyse froth.</div>';
+  }
+
+  function renderLoading() {
+    resultContent.innerHTML =
+      '<div class="spinner-wrap"><div class="spinner"></div><span>Analysing&hellip;</span></div>';
+  }
+
+  function renderErrorCard(message, httpStatus) {
+    var statusText = httpStatus ? " (HTTP " + httpStatus + ")" : "";
+    resultContent.innerHTML =
+      '<div class="error-card"><strong>NO READING</strong>' +
+      escapeHtml(message) + escapeHtml(statusText) + "</div>";
+  }
+
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function fmtObservationValue(obs) {
+    if (!obs || obs.class == null || obs.confidence == null) {
+      return "&mdash;";
+    }
+    return escapeHtml(String(obs.class).toUpperCase()) + " &mdash; " + escapeHtml(String(obs.confidence)) + "%";
+  }
+
+  function renderResult(data) {
+    var status = data.status;
+    var statusLabels = {
+      OK: "OK — reading confident",
+      VERIFY: "VERIFY — check by eye",
+      ERROR: "NO READING — retake image"
+    };
+    var badgeClass = (status === "OK" || status === "VERIFY" || status === "ERROR") ? status : "ERROR";
+    var badgeText = statusLabels[badgeClass];
+
+    var obs = data.observation || {};
+    var bubbleLine = fmtObservationValue(obs.bubble_size);
+    var colourLine = fmtObservationValue(obs.colour);
+
+    var reasonsHtml = "";
+    if (Array.isArray(data.reasons) && data.reasons.length > 0) {
+      reasonsHtml =
+        '<div class="reasons"><h3>Reasons</h3><ul>' +
+        data.reasons.map(function (r) { return "<li>" + escapeHtml(String(r)) + "</li>"; }).join("") +
+        "</ul></div>";
+    }
+
+    var versions = data.model_versions || {};
+    var sizeVer = versions.size != null ? escapeHtml(String(versions.size)) : "—";
+    var colourVer = versions.colour != null ? escapeHtml(String(versions.colour)) : "—";
+    var timeStr = "—";
+    if (data.time) {
+      var d = new Date(data.time);
+      timeStr = isNaN(d.getTime()) ? escapeHtml(String(data.time)) : d.toLocaleString();
+    }
+
+    resultContent.innerHTML =
+      '<div class="badge ' + badgeClass + '">' + badgeText + "</div>" +
+      '<div class="reading-lines">' +
+      '<div class="reading-line"><span class="label">BUBBLE SIZE</span><span class="value">' + bubbleLine + "</span></div>" +
+      '<div class="reading-line"><span class="label">COLOUR</span><span class="value">' + colourLine + "</span></div>" +
+      "</div>" +
+      reasonsHtml +
+      '<div class="footer-line">Model versions — size: ' + sizeVer + ", colour: " + colourVer +
+      " &middot; Reading time: " + timeStr + "</div>";
+  }
+
+  function addHistoryEntry(entry) {
+    history.unshift(entry);
+    renderHistory();
+  }
+
+  function renderHistory() {
+    if (history.length === 0) {
+      historyWrap.innerHTML = '<div class="no-history">No readings yet this session.</div>';
+      return;
+    }
+
+    var rows = history.map(function (h) {
+      var sizeText = h.bubbleClass ? escapeHtml(h.bubbleClass.toUpperCase()) + " (" + h.bubbleConf + "%)" : "—";
+      var colourText = h.colourClass ? escapeHtml(h.colourClass.toUpperCase()) + " (" + h.colourConf + "%)" : "—";
+      var statusClass = (h.status === "OK" || h.status === "VERIFY" || h.status === "ERROR") ? h.status : "ERROR";
+      return (
+        "<tr>" +
+        '<td data-label="Time">' + escapeHtml(h.timeLocal) + "</td>" +
+        '<td data-label="Image"><img class="thumb" src="' + h.thumb + '" alt="Froth thumbnail"></td>' +
+        '<td data-label="Size">' + sizeText + "</td>" +
+        '<td data-label="Colour">' + colourText + "</td>" +
+        '<td data-label="Status"><span class="status-pill ' + statusClass + '">' + escapeHtml(statusClass) + "</span></td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    historyWrap.innerHTML =
+      "<table><thead><tr><th>Time</th><th>Image</th><th>Size</th><th>Colour</th><th>Status</th></tr></thead>" +
+      "<tbody>" + rows + "</tbody></table>";
+  }
+
+  function updateDevJsonView() {
+    if (devMode && lastRawResponse != null) {
+      devJson.style.display = "block";
+      devJsonContent.textContent = lastRawResponse;
+    } else {
+      devJson.style.display = "none";
+    }
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "d" || e.key === "D") {
+      var tag = (document.activeElement && document.activeElement.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      devMode = !devMode;
+      updateDevJsonView();
+    }
+  });
+
+  function isValidResponse(data) {
+    return data && typeof data === "object" && "status" in data && "observation" in data;
+  }
+
+  analyseBtn.addEventListener("click", function () {
+    if (!selectedBase64 || isRequestRunning) return;
+
+    clearInputError();
+    setRunning(true);
+    renderLoading();
+    lastRawResponse = null;
+    updateDevJsonView();
+
+    var thumb = previewImg.src;
+    var controller = new AbortController();
+    var timedOut = false;
+    var timer = setTimeout(function () {
+      timedOut = true;
+      controller.abort();
+    }, TIMEOUT_MS);
+
+    fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: selectedBase64 }),
+      signal: controller.signal
+    })
+      .then(function (response) {
+        clearTimeout(timer);
+        return response.text().then(function (text) {
+          return { ok: response.ok, status: response.status, text: text };
+        });
+      })
+      .then(function (result) {
+        lastRawResponse = result.text;
+        updateDevJsonView();
+
+        if (!result.ok) {
+          renderErrorCard("The system returned an error.", result.status);
+          addHistoryEntry({
+            timeLocal: new Date().toLocaleString(),
+            thumb: thumb,
+            bubbleClass: null,
+            bubbleConf: null,
+            colourClass: null,
+            colourConf: null,
+            status: "ERROR"
+          });
+          setRunning(false);
+          return;
+        }
+
+        var data;
+        try {
+          data = JSON.parse(result.text);
+        } catch (parseErr) {
+          data = null;
+        }
+
+        if (!isValidResponse(data)) {
+          var malformed = {
+            status: "ERROR",
+            observation: { bubble_size: null, colour: null },
+            reasons: ["Malformed response from server"],
+            model_versions: {},
+            time: new Date().toISOString()
+          };
+          renderResult(malformed);
+          addHistoryEntry({
+            timeLocal: new Date().toLocaleString(),
+            thumb: thumb,
+            bubbleClass: null,
+            bubbleConf: null,
+            colourClass: null,
+            colourConf: null,
+            status: "ERROR"
+          });
+          setRunning(false);
+          return;
+        }
+
+        renderResult(data);
+
+        var obs = data.observation || {};
+        var b = obs.bubble_size;
+        var c = obs.colour;
+        addHistoryEntry({
+          timeLocal: new Date().toLocaleString(),
+          thumb: thumb,
+          bubbleClass: b ? b.class : null,
+          bubbleConf: b ? b.confidence : null,
+          colourClass: c ? c.class : null,
+          colourConf: c ? c.confidence : null,
+          status: (data.status === "OK" || data.status === "VERIFY" || data.status === "ERROR") ? data.status : "ERROR"
+        });
+
+        setRunning(false);
+      })
+      .catch(function (err) {
+        clearTimeout(timer);
+        if (timedOut) {
+          renderErrorCard("No response from the system — try again");
+        } else {
+          renderErrorCard("Network error — could not reach the analysis system.");
+        }
+        addHistoryEntry({
+          timeLocal: new Date().toLocaleString(),
+          thumb: thumb,
+          bubbleClass: null,
+          bubbleConf: null,
+          colourClass: null,
+          colourConf: null,
+          status: "ERROR"
+        });
+        setRunning(false);
+      });
+  });
+
+  renderPlaceholder();
+  renderHistory();
+})();
+</script>
+
+</body>
+</html>
