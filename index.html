@@ -278,6 +278,19 @@
     font-size: 1rem;
   }
 
+  .sim-subhead {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-weight: 700;
+    border-top: 1px solid var(--panel-border);
+    padding-top: 18px;
+    margin: 22px 0 14px;
+  }
+
+  .sim-subhead:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+
   /* --- Drop zone --- */
   .dropzone {
     border: 3px dashed var(--panel-border);
@@ -429,6 +442,95 @@
     font-size: 0.95rem;
   }
 
+  /* --- Folder playback --- */
+  .folder-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+
+  .folder-controls-row label {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .folder-empty {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+
+  .folder-count {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+
+  .folder-strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .folder-thumb-sm {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid var(--panel-border);
+    flex-shrink: 0;
+  }
+
+  .sim-btn.play-btn { background: var(--ok); color: #06231a; }
+  .sim-btn.pause-btn { background: #2a3542; color: var(--text); border: 2px solid var(--panel-border); }
+  .sim-btn.stop-btn { background: var(--error-bg); color: var(--error); border: 2px solid var(--error); }
+
+  .folder-progress {
+    margin-top: 16px;
+  }
+
+  .folder-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .folder-thumb {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    flex-shrink: 0;
+  }
+
+  .folder-progress-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .folder-error {
+    color: var(--error);
+    font-size: 0.9rem;
+    margin-top: 4px;
+    font-weight: 700;
+  }
+
+  .folder-complete {
+    background: var(--ok-bg);
+    border: 1px solid var(--ok);
+    color: var(--ok);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: inline-block;
+  }
+
   .spinner {
     width: 22px;
     height: 22px;
@@ -505,6 +607,8 @@
         <select id="cellSelect"></select>
       </div>
 
+      <div class="sim-subhead">Single frame</div>
+
       <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop froth image or choose a file">
         <strong>Drop froth image here</strong>
         <span>JPG or PNG, up to 5&nbsp;MB</span>
@@ -526,6 +630,32 @@
       </div>
 
       <div class="send-status" id="sendStatus"></div>
+
+      <div class="sim-subhead">Folder playback</div>
+
+      <button type="button" class="choose-btn" id="chooseFolderBtn">Choose folder</button>
+      <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
+
+      <div id="folderSummary" style="margin-top:14px;">
+        <div class="folder-empty">No folder loaded.</div>
+      </div>
+
+      <div class="folder-controls-row">
+        <label for="playbackInterval">Interval</label>
+        <select id="playbackInterval">
+          <option value="1000">1s</option>
+          <option value="2000" selected>2s</option>
+          <option value="5000">5s</option>
+        </select>
+      </div>
+
+      <div class="sim-actions">
+        <button type="button" class="sim-btn play-btn" id="folderPlayBtn" disabled>Play</button>
+        <button type="button" class="sim-btn pause-btn" id="folderPauseBtn" disabled>Pause</button>
+        <button type="button" class="sim-btn stop-btn" id="folderStopBtn" disabled>Stop</button>
+      </div>
+
+      <div class="folder-progress" id="folderProgress"></div>
 
       <div id="devJson" style="display:none;">
         <div class="dev-json-label">Raw response (developer mode — press D to hide)</div>
@@ -564,6 +694,14 @@
   var sendBtn = document.getElementById("sendBtn");
   var continuousBtn = document.getElementById("continuousBtn");
   var sendStatus = document.getElementById("sendStatus");
+  var chooseFolderBtn = document.getElementById("chooseFolderBtn");
+  var folderInput = document.getElementById("folderInput");
+  var folderSummary = document.getElementById("folderSummary");
+  var playbackInterval = document.getElementById("playbackInterval");
+  var folderPlayBtn = document.getElementById("folderPlayBtn");
+  var folderPauseBtn = document.getElementById("folderPauseBtn");
+  var folderStopBtn = document.getElementById("folderStopBtn");
+  var folderProgress = document.getElementById("folderProgress");
   var devJson = document.getElementById("devJson");
   var devJsonContent = document.getElementById("devJsonContent");
 
@@ -586,6 +724,14 @@
   var continuousTimer = null;
   var devMode = false;
   var lastRawResponse = null;
+
+  // mode is which engine currently owns frame sending: null | "continuous" | "folder"
+  var mode = null;
+  var folderFrames = []; // [{file, name, url}], sorted ascending by filename
+  var folderIndex = 0;
+  var folderPlaying = false;
+  var folderTimer = null;
+  var folderRunToken = 0;
 
   function escapeHtml(str) {
     var div = document.createElement("div");
@@ -732,17 +878,24 @@
     return (bytes / 1024).toFixed(1) + " KB";
   }
 
-  function updateActionButtons() {
-    var running = continuousTimer != null;
-    sendBtn.disabled = !selectedBase64 || isSendRunning || running;
-    continuousBtn.disabled = !selectedBase64;
+  function refreshControls() {
+    var contBusy = mode === "continuous";
+    var folderBusy = mode === "folder";
+
+    sendBtn.disabled = !selectedBase64 || isSendRunning || contBusy || folderBusy;
+    continuousBtn.disabled = !selectedBase64 || folderBusy;
+
+    chooseFolderBtn.disabled = folderBusy && folderPlaying;
+    folderPlayBtn.disabled = folderFrames.length === 0 || contBusy || (folderBusy && folderPlaying);
+    folderPauseBtn.disabled = !(folderBusy && folderPlaying);
+    folderStopBtn.disabled = !folderBusy;
   }
 
   function resetSelection() {
     selectedBase64 = null;
     previewRow.style.display = "none";
     previewImg.src = "";
-    updateActionButtons();
+    refreshControls();
   }
 
   function handleFiles(files) {
@@ -774,7 +927,7 @@
       previewImg.src = dataUrl;
       fileMeta.textContent = file.name + " — " + formatBytes(file.size);
       previewRow.style.display = "flex";
-      updateActionButtons();
+      refreshControls();
     };
     reader.onerror = function () {
       showInputError("Could not read the selected file. Please try again.");
@@ -921,12 +1074,8 @@
     renderCellWall();
   }
 
-  // --- Sending a frame ---
-  function sendFrame(cell, base64, isFromContinuous) {
-    if (isSendRunning) return;
-    isSendRunning = true;
-    updateActionButtons();
-    renderSendPending();
+  // --- Low-level POST, shared by manual send, continuous mode and folder playback ---
+  function postFrame(cell, base64, onDone) {
     lastRawResponse = null;
     updateDevJsonView();
 
@@ -954,9 +1103,7 @@
         updateDevJsonView();
 
         if (!result.ok) {
-          renderSendError("The system returned an error.", result.status);
-          isSendRunning = false;
-          updateActionButtons();
+          onDone({ ok: false, message: "The system returned an error.", httpStatus: result.status });
           return;
         }
 
@@ -970,30 +1117,43 @@
         applyResponse(cell, data);
 
         if (data == null) {
-          renderSendError("Malformed response from the system.");
+          onDone({ ok: false, message: "Malformed response from the system." });
         } else {
-          renderSendOk(cell);
+          onDone({ ok: true });
         }
-
-        isSendRunning = false;
-        updateActionButtons();
       })
       .catch(function () {
         clearTimeout(timer);
         if (timedOut) {
-          renderSendError("No response from the system — try again");
+          onDone({ ok: false, message: "No response from the system — try again" });
         } else {
-          renderSendError("Network error — could not reach the analysis system.");
+          onDone({ ok: false, message: "Network error — could not reach the analysis system." });
         }
-        isSendRunning = false;
-        updateActionButtons();
       });
+  }
+
+  // --- Manual single-frame send / continuous mode ---
+  function sendFrame(cell, base64) {
+    if (isSendRunning) return;
+    isSendRunning = true;
+    refreshControls();
+    renderSendPending();
+
+    postFrame(cell, base64, function (outcome) {
+      if (outcome.ok) {
+        renderSendOk(cell);
+      } else {
+        renderSendError(outcome.message, outcome.httpStatus);
+      }
+      isSendRunning = false;
+      refreshControls();
+    });
   }
 
   sendBtn.addEventListener("click", function () {
     if (!selectedBase64) return;
     clearInputError();
-    sendFrame(cellSelect.value, selectedBase64, false);
+    sendFrame(cellSelect.value, selectedBase64);
   });
 
   function stopContinuous() {
@@ -1001,20 +1161,22 @@
       clearInterval(continuousTimer);
       continuousTimer = null;
     }
+    if (mode === "continuous") mode = null;
     continuousBtn.classList.remove("running");
     continuousBtn.innerHTML = "Run continuous (every 5s)";
-    updateActionButtons();
+    refreshControls();
   }
 
   function startContinuous() {
-    if (!selectedBase64) return;
+    if (!selectedBase64 || mode === "folder") return;
+    mode = "continuous";
     continuousBtn.classList.add("running");
     continuousBtn.innerHTML = '<span class="live-dot"></span>Stop continuous';
-    updateActionButtons();
+    refreshControls();
 
     var tick = function () {
       if (!selectedBase64) return;
-      sendFrame(cellSelect.value, selectedBase64, true);
+      sendFrame(cellSelect.value, selectedBase64);
     };
 
     tick();
@@ -1029,9 +1191,196 @@
     }
   });
 
+  // --- Folder playback ---
+  function readFileAsBase64(file, callback) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var dataUrl = e.target.result;
+      callback(dataUrl.substring(dataUrl.indexOf(",") + 1));
+    };
+    reader.onerror = function () {
+      callback(null);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function revokeFolderUrls() {
+    folderFrames.forEach(function (f) {
+      if (f.url) URL.revokeObjectURL(f.url);
+    });
+  }
+
+  function renderFolderSummary(skippedForSize) {
+    if (folderFrames.length === 0) {
+      var sizeNote = skippedForSize ? " " + skippedForSize + " file(s) skipped — over 5 MB." : "";
+      folderSummary.innerHTML = '<div class="folder-empty">No supported images found in this folder.' + escapeHtml(sizeNote) + '</div>';
+      return;
+    }
+
+    var stripHtml = folderFrames.map(function (f) {
+      return '<img class="folder-thumb-sm" src="' + f.url + '" alt="' + escapeHtml(f.name) + '" title="' + escapeHtml(f.name) + '">';
+    }).join("");
+
+    var countNote = skippedForSize ? " &middot; " + skippedForSize + " file(s) skipped — over 5 MB." : "";
+    folderSummary.innerHTML =
+      '<div class="folder-count">' + folderFrames.length + " frames loaded" + countNote + '</div>' +
+      '<div class="folder-strip">' + stripHtml + '</div>';
+  }
+
+  function handleFolderFiles(fileList) {
+    if (!fileList || fileList.length === 0) return;
+
+    folderRunToken++;
+    folderPlaying = false;
+    clearFolderTimer();
+    if (mode === "folder") mode = null;
+    folderProgress.innerHTML = "";
+
+    revokeFolderUrls();
+
+    var accepted = [];
+    var skippedForSize = 0;
+    for (var i = 0; i < fileList.length; i++) {
+      var f = fileList[i];
+      var nameLower = f.name.toLowerCase();
+      var hasAllowedExt = nameLower.endsWith(".jpg") || nameLower.endsWith(".jpeg") || nameLower.endsWith(".png");
+      if (!hasAllowedExt) continue; // unsupported type — skipped silently
+      if (f.size > MAX_SIZE) {
+        skippedForSize++;
+        continue;
+      }
+      accepted.push(f);
+    }
+
+    accepted.sort(function (a, b) {
+      var an = a.webkitRelativePath || a.name;
+      var bn = b.webkitRelativePath || b.name;
+      if (an < bn) return -1;
+      if (an > bn) return 1;
+      return 0;
+    });
+
+    folderFrames = accepted.map(function (f) {
+      return { file: f, name: f.name, url: URL.createObjectURL(f) };
+    });
+    folderIndex = 0;
+
+    renderFolderSummary(skippedForSize);
+    refreshControls();
+  }
+
+  chooseFolderBtn.addEventListener("click", function () {
+    folderInput.click();
+  });
+
+  folderInput.addEventListener("change", function () {
+    handleFolderFiles(folderInput.files);
+    folderInput.value = "";
+  });
+
+  function getFolderIntervalMs() {
+    return parseInt(playbackInterval.value, 10) || 2000;
+  }
+
+  function clearFolderTimer() {
+    if (folderTimer != null) {
+      clearTimeout(folderTimer);
+      folderTimer = null;
+    }
+  }
+
+  function renderFolderProgress(idx, frame, errorMessage) {
+    var thumb = frame.url ? '<img class="folder-thumb" src="' + frame.url + '" alt="Current frame preview">' : "";
+    var text = "Frame " + (idx + 1) + " of " + folderFrames.length + " — " + escapeHtml(frame.name);
+    var errHtml = errorMessage ? '<div class="folder-error">' + escapeHtml(errorMessage) + '</div>' : "";
+    folderProgress.innerHTML =
+      '<div class="folder-progress-row">' + thumb +
+      '<div><div class="folder-progress-text">' + text + '</div>' + errHtml + '</div></div>';
+  }
+
+  function scheduleNextFolderTick(token) {
+    clearFolderTimer();
+    folderTimer = setTimeout(function () { runFolderLoop(token); }, getFolderIntervalMs());
+  }
+
+  function runFolderLoop(token) {
+    if (token !== folderRunToken || !folderPlaying) return;
+
+    if (folderIndex >= folderFrames.length) {
+      folderPlaying = false;
+      mode = null;
+      folderProgress.innerHTML = '<div class="folder-complete">Playback complete</div>';
+      refreshControls();
+      return;
+    }
+
+    var idx = folderIndex;
+    var frame = folderFrames[idx];
+    renderFolderProgress(idx, frame, null);
+
+    readFileAsBase64(frame.file, function (base64) {
+      if (token !== folderRunToken) return;
+
+      if (base64 == null) {
+        renderFolderProgress(idx, frame, "Could not read file — skipped.");
+        folderIndex = idx + 1;
+        if (folderPlaying) scheduleNextFolderTick(token);
+        return;
+      }
+
+      postFrame(cellSelect.value, base64, function (outcome) {
+        if (token !== folderRunToken) return;
+
+        if (!outcome.ok) {
+          var statusText = outcome.httpStatus ? " (HTTP " + outcome.httpStatus + ")" : "";
+          renderFolderProgress(idx, frame, outcome.message + statusText);
+        } else {
+          renderFolderProgress(idx, frame, null);
+        }
+
+        folderIndex = idx + 1;
+        if (folderPlaying) scheduleNextFolderTick(token);
+      });
+    });
+  }
+
+  function playFolder() {
+    if (folderFrames.length === 0 || mode === "continuous") return;
+    if (mode !== "folder") {
+      folderIndex = 0;
+      mode = "folder";
+    }
+    folderPlaying = true;
+    folderRunToken++;
+    refreshControls();
+    runFolderLoop(folderRunToken);
+  }
+
+  function pauseFolder() {
+    if (mode !== "folder" || !folderPlaying) return;
+    folderPlaying = false;
+    clearFolderTimer();
+    refreshControls();
+  }
+
+  function stopFolder() {
+    folderRunToken++;
+    folderPlaying = false;
+    clearFolderTimer();
+    folderIndex = 0;
+    mode = null;
+    folderProgress.innerHTML = "";
+    refreshControls();
+  }
+
+  folderPlayBtn.addEventListener("click", playFolder);
+  folderPauseBtn.addEventListener("click", pauseFolder);
+  folderStopBtn.addEventListener("click", stopFolder);
+
   renderCellWall();
   renderEventLog();
   clearSendStatus();
+  refreshControls();
 })();
 </script>
 
