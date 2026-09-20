@@ -357,7 +357,7 @@
 
   .choose-btn:hover { filter: brightness(1.1); }
 
-  #fileInput { display: none; }
+  #fileInput, #batchFileInput { display: none; }
 
   .inline-error {
     margin-top: 14px;
@@ -833,6 +833,29 @@
     <h2>Batch Read</h2>
     <p class="sim-note">Each frame is judged on its own. Batch reads are sent with reset, so they never write to a cell's committed state.</p>
 
+    <div class="sim-subhead">Single image</div>
+
+    <div id="batchDropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop froth image or choose a file">
+      <strong>Drop froth image here</strong>
+      <span>JPG or PNG, up to 5&nbsp;MB</span>
+      <br>
+      <button type="button" class="choose-btn" id="batchChooseBtn">Choose image</button>
+      <input type="file" id="batchFileInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png">
+    </div>
+
+    <div id="batchInputError" class="inline-error" style="display:none;"></div>
+
+    <div id="batchPreviewRow" class="preview-row" style="display:none;">
+      <img id="batchPreviewImg" alt="Selected froth image preview">
+      <div class="file-meta" id="batchFileMeta"></div>
+    </div>
+
+    <div class="batch-controls">
+      <button type="button" class="sim-btn run-btn" id="batchReadImageBtn" disabled>Read image</button>
+    </div>
+
+    <div class="sim-subhead">Folder</div>
+
     <div class="batch-controls">
       <button type="button" class="choose-btn" id="batchChooseFolderBtn">Choose folder</button>
       <button type="button" class="sim-btn run-btn" id="batchRunBtn" disabled>Run</button>
@@ -845,7 +868,7 @@
     <div class="batch-progress" id="batchProgress" style="display:none;"></div>
 
     <div id="batchResults">
-      <div class="batch-empty">No readings yet. Choose a folder and press Run.</div>
+      <div class="batch-empty">No readings yet. Read a single image, or choose a folder and press Run.</div>
     </div>
 
     <div class="copy-row">
@@ -900,6 +923,14 @@
   var tabBatch = document.getElementById("tabBatch");
   var liveView = document.getElementById("liveView");
   var batchView = document.getElementById("batchView");
+  var batchDropzone = document.getElementById("batchDropzone");
+  var batchChooseBtn = document.getElementById("batchChooseBtn");
+  var batchFileInput = document.getElementById("batchFileInput");
+  var batchInputError = document.getElementById("batchInputError");
+  var batchPreviewRow = document.getElementById("batchPreviewRow");
+  var batchPreviewImg = document.getElementById("batchPreviewImg");
+  var batchFileMeta = document.getElementById("batchFileMeta");
+  var batchReadImageBtn = document.getElementById("batchReadImageBtn");
   var batchChooseFolderBtn = document.getElementById("batchChooseFolderBtn");
   var batchRunBtn = document.getElementById("batchRunBtn");
   var batchFolderSummary = document.getElementById("batchFolderSummary");
@@ -937,7 +968,11 @@
   var folderRunToken = 0;
 
   var batchRows = [];
+  var batchTotal = 0; // frames the current table is expected to hold
   var batchToken = 0;
+  var batchImageBase64 = null;
+  var batchImageName = null;
+  var batchImageUrl = null;
 
   function escapeHtml(str) {
     var div = document.createElement("div");
@@ -1104,6 +1139,7 @@
     folderStopBtn.disabled = !folderBusy;
 
     batchChooseFolderBtn.disabled = pickerLocked;
+    batchReadImageBtn.disabled = !batchImageBase64 || contBusy || folderBusy || batchBusy;
     batchRunBtn.disabled = folderFrames.length === 0 || contBusy || folderBusy || batchBusy;
     batchCopyCsvBtn.disabled = batchRows.length === 0;
   }
@@ -1115,23 +1151,29 @@
     refreshControls();
   }
 
-  function handleFiles(files) {
-    clearInputError();
-    if (!files || files.length === 0) return;
-    var file = files[0];
-
+  // returns an error message, or null when the file is acceptable
+  function validateImageFile(file) {
     var isAllowedType = ALLOWED_TYPES.indexOf(file.type) !== -1;
     var nameLower = file.name.toLowerCase();
     var hasAllowedExt = nameLower.endsWith(".jpg") || nameLower.endsWith(".jpeg") || nameLower.endsWith(".png");
 
     if (!isAllowedType && !hasAllowedExt) {
-      showInputError("Unsupported file type. Please choose a JPG or PNG image.");
-      resetSelection();
-      return;
+      return "Unsupported file type. Please choose a JPG or PNG image.";
     }
-
     if (file.size > MAX_SIZE) {
-      showInputError("File is too large (" + formatBytes(file.size) + "). Maximum size is 5 MB.");
+      return "File is too large (" + formatBytes(file.size) + "). Maximum size is 5 MB.";
+    }
+    return null;
+  }
+
+  function handleFiles(files) {
+    clearInputError();
+    if (!files || files.length === 0) return;
+    var file = files[0];
+
+    var problem = validateImageFile(file);
+    if (problem) {
+      showInputError(problem);
       resetSelection();
       return;
     }
@@ -1153,45 +1195,49 @@
     reader.readAsDataURL(file);
   }
 
-  chooseBtn.addEventListener("click", function () {
-    fileInput.click();
-  });
-
-  dropzone.addEventListener("click", function (e) {
-    if (e.target !== chooseBtn) fileInput.click();
-  });
-
-  dropzone.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fileInput.click();
-    }
-  });
-
-  fileInput.addEventListener("change", function () {
-    handleFiles(fileInput.files);
-    fileInput.value = "";
-  });
-
-  ["dragenter", "dragover"].forEach(function (evt) {
-    dropzone.addEventListener(evt, function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      dropzone.classList.add("dragover");
+  function wireDropzone(zone, chooseButton, input, onFiles) {
+    chooseButton.addEventListener("click", function () {
+      input.click();
     });
-  });
 
-  ["dragleave", "drop"].forEach(function (evt) {
-    dropzone.addEventListener(evt, function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      dropzone.classList.remove("dragover");
+    zone.addEventListener("click", function (e) {
+      if (e.target !== chooseButton) input.click();
     });
-  });
 
-  dropzone.addEventListener("drop", function (e) {
-    handleFiles(e.dataTransfer.files);
-  });
+    zone.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        input.click();
+      }
+    });
+
+    input.addEventListener("change", function () {
+      onFiles(input.files);
+      input.value = "";
+    });
+
+    ["dragenter", "dragover"].forEach(function (evt) {
+      zone.addEventListener(evt, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(function (evt) {
+      zone.addEventListener(evt, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.classList.remove("dragover");
+      });
+    });
+
+    zone.addEventListener("drop", function (e) {
+      onFiles(e.dataTransfer.files);
+    });
+  }
+
+  wireDropzone(dropzone, chooseBtn, fileInput, handleFiles);
 
   // --- Send status UI ---
   function renderSendPending() {
@@ -1496,6 +1542,7 @@
       return { file: f, name: f.name, url: URL.createObjectURL(f) };
     });
     folderIndex = 0;
+    batchTotal = folderFrames.length;
 
     renderFolderSummary(skippedForSize);
     renderBatchResults();
@@ -1666,19 +1713,20 @@
   }
 
   function renderBatchProgress() {
-    if (folderFrames.length === 0 && batchRows.length === 0) {
+    var total = Math.max(batchTotal, batchRows.length);
+    if (total === 0) {
       batchProgress.style.display = "none";
       return;
     }
     batchProgress.style.display = "block";
-    batchProgress.textContent = batchRows.length + " of " + folderFrames.length + " read";
+    batchProgress.textContent = batchRows.length + " of " + total + " read";
   }
 
   function renderBatchResults() {
     renderBatchProgress();
 
     if (batchRows.length === 0) {
-      batchResults.innerHTML = '<div class="batch-empty">No readings yet. Choose a folder and press Run.</div>';
+      batchResults.innerHTML = '<div class="batch-empty">No readings yet. Read a single image, or choose a folder and press Run.</div>';
       batchCopyNote.textContent = "";
       refreshControls();
       return;
@@ -1751,10 +1799,86 @@
     mode = "batch";
     batchToken++;
     batchRows = [];
+    batchTotal = folderFrames.length;
     batchCopyNote.textContent = "";
     renderBatchResults();
     batchStep(batchToken, 0);
   }
+
+  function showBatchInputError(msg) {
+    batchInputError.textContent = msg;
+    batchInputError.style.display = "block";
+  }
+
+  function clearBatchInputError() {
+    batchInputError.style.display = "none";
+    batchInputError.textContent = "";
+  }
+
+  function resetBatchImage() {
+    batchImageBase64 = null;
+    batchImageName = null;
+    batchImageUrl = null;
+    batchPreviewRow.style.display = "none";
+    batchPreviewImg.src = "";
+    refreshControls();
+  }
+
+  function handleBatchImageFiles(files) {
+    clearBatchInputError();
+    if (!files || files.length === 0) return;
+    var file = files[0];
+
+    var problem = validateImageFile(file);
+    if (problem) {
+      showBatchInputError(problem);
+      resetBatchImage();
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var dataUrl = e.target.result;
+      batchImageBase64 = dataUrl.substring(dataUrl.indexOf(",") + 1);
+      batchImageName = file.name;
+      batchImageUrl = URL.createObjectURL(file);
+      batchPreviewImg.src = batchImageUrl;
+      batchFileMeta.textContent = file.name + " — " + formatBytes(file.size);
+      batchPreviewRow.style.display = "flex";
+      refreshControls();
+    };
+    reader.onerror = function () {
+      showBatchInputError("Could not read the selected file. Please try again.");
+      resetBatchImage();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function readBatchImage() {
+    if (!batchImageBase64 || mode != null) return;
+
+    var frame = { name: batchImageName, url: batchImageUrl };
+    var token = batchToken;
+
+    mode = "batch";
+    batchCopyNote.textContent = "";
+    refreshControls();
+
+    postWebhook({ cell: cellSelect.value, image: batchImageBase64, reset: true }, function (outcome) {
+      if (mode === "batch") mode = null;
+
+      if (token !== batchToken) {
+        refreshControls();
+        return;
+      }
+
+      batchRows.push(batchRowFromOutcome(frame, outcome));
+      renderBatchResults();
+    });
+  }
+
+  wireDropzone(batchDropzone, batchChooseBtn, batchFileInput, handleBatchImageFiles);
+  batchReadImageBtn.addEventListener("click", readBatchImage);
 
   function buildBatchCsv() {
     var header = ["filename", "size", "size_confidence", "colour", "colour_confidence", "status", "reasons"];
