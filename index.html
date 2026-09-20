@@ -242,8 +242,9 @@
     font-size: 0.95rem;
   }
 
-  /* --- Simulator panel --- */
-  .simulator-panel summary {
+  /* --- Simulator and admin panels --- */
+  .simulator-panel summary,
+  .admin-panel summary {
     cursor: pointer;
     list-style: none;
     display: flex;
@@ -251,9 +252,59 @@
     gap: 10px;
   }
 
-  .simulator-panel summary::-webkit-details-marker { display: none; }
+  .simulator-panel summary::-webkit-details-marker,
+  .admin-panel summary::-webkit-details-marker { display: none; }
 
-  .simulator-panel summary h2 { margin: 0; }
+  .simulator-panel summary h2,
+  .admin-panel summary h2 { margin: 0; }
+
+  .admin-panel { padding: 14px 20px; }
+
+  .admin-panel summary h2 { font-size: 0.9rem; }
+
+  .admin-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .admin-btn {
+    background: #2a3542;
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 112px;
+  }
+
+  .admin-btn:hover:not(:disabled) { border-color: var(--accent); }
+
+  .admin-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .admin-btn.reset-all {
+    background: var(--error-bg);
+    color: var(--error);
+    border-color: var(--error);
+  }
+
+  .admin-btn-note {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--error);
+    min-height: 0.85rem;
+  }
+
+  .admin-btn-note.pending { color: var(--text-dim); }
 
   .sim-tag {
     display: inline-block;
@@ -743,6 +794,11 @@
 
 <div id="liveView">
 
+  <details class="panel admin-panel" id="adminPanel">
+    <summary><h2>Admin</h2></summary>
+    <div class="admin-buttons" id="adminButtons"></div>
+  </details>
+
   <section class="panel">
     <h2>Cell Wall</h2>
     <div id="cellGrid" class="cell-grid"></div>
@@ -887,6 +943,9 @@
 
   var CELLS = ["01", "02", "03", "04"];
 
+  // Sent as the image on an admin reset: a 1x1 transparent PNG
+  var RESET_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
   var WEBHOOK_URL = "https://bandile17.app.n8n.cloud/webhook/froth";
   var MAX_SIZE = 5 * 1024 * 1024;
   var ALLOWED_TYPES = ["image/jpeg", "image/png"];
@@ -897,6 +956,7 @@
   var MAX_EVENT_ROWS = 50;
 
   var cellGrid = document.getElementById("cellGrid");
+  var adminButtons = document.getElementById("adminButtons");
   var eventLogWrap = document.getElementById("eventLogWrap");
   var cellSelect = document.getElementById("cellSelect");
   var dropzone = document.getElementById("dropzone");
@@ -1948,6 +2008,99 @@
   });
 
   batchRunBtn.addEventListener("click", runBatch);
+
+  // --- Admin reset ---
+  var resetControls = {};
+  var resetAllBtn = null;
+
+  function buildResetButton(label, className) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = className;
+
+    var labelEl = document.createElement("span");
+    labelEl.textContent = label;
+
+    var noteEl = document.createElement("span");
+    noteEl.className = "admin-btn-note";
+
+    btn.appendChild(labelEl);
+    btn.appendChild(noteEl);
+    adminButtons.appendChild(btn);
+
+    return { btn: btn, note: noteEl };
+  }
+
+  function setResetNote(entry, text, pending) {
+    entry.note.textContent = text;
+    entry.note.classList.toggle("pending", !!pending);
+  }
+
+  function setResetButtonsDisabled(disabled) {
+    CELLS.forEach(function (c) { resetControls[c].btn.disabled = disabled; });
+    resetAllBtn.btn.disabled = disabled;
+  }
+
+  function clearCellState(cell) {
+    var state = cellStates[cell];
+    if (!state) return;
+    state.size = null;
+    state.colour = null;
+    state.readingStatus = null;
+    state.lastFrameAt = null;
+    state.changedUntil = null;
+    state.flashPending = false;
+  }
+
+  function resetCell(cell, onDone) {
+    var entry = resetControls[cell];
+    if (!entry) {
+      if (onDone) onDone(false);
+      return;
+    }
+
+    entry.btn.title = "";
+    setResetNote(entry, "Resetting…", true);
+
+    postWebhook({ cell: cell, reset: true, image: RESET_IMAGE }, function (outcome) {
+      if (outcome.responded) {
+        clearCellState(cell);
+        renderCellWall();
+        setResetNote(entry, "", false);
+      } else {
+        setResetNote(entry, outcome.httpStatus ? "HTTP " + outcome.httpStatus : "Failed", false);
+        entry.btn.title = outcome.message || "";
+      }
+      if (onDone) onDone(outcome.responded === true);
+    });
+  }
+
+  function resetAllCells() {
+    setResetButtonsDisabled(true);
+    var i = 0;
+
+    (function next() {
+      if (i >= CELLS.length) {
+        eventLog = [];
+        renderEventLog();
+        setResetButtonsDisabled(false);
+        return;
+      }
+      resetCell(CELLS[i++], next);
+    })();
+  }
+
+  CELLS.forEach(function (c) {
+    var entry = buildResetButton("Reset " + c, "admin-btn");
+    entry.btn.addEventListener("click", function () {
+      setResetButtonsDisabled(true);
+      resetCell(c, function () { setResetButtonsDisabled(false); });
+    });
+    resetControls[c] = entry;
+  });
+
+  resetAllBtn = buildResetButton("Reset all", "admin-btn reset-all");
+  resetAllBtn.btn.addEventListener("click", resetAllCells);
 
   // --- View toggle ---
   function setView(view) {
