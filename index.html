@@ -50,6 +50,34 @@
     font-size: 0.95rem;
   }
 
+  /* --- View toggle --- */
+  .view-toggle {
+    display: flex;
+    gap: 10px;
+    padding: 12px 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .view-tab {
+    background: #0e141b;
+    color: var(--text-dim);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .view-tab.is-active {
+    background: var(--accent);
+    color: #06121c;
+    border-color: var(--accent);
+  }
+
   main {
     max-width: 1100px;
     margin: 0 auto;
@@ -531,6 +559,107 @@
     display: inline-block;
   }
 
+  /* --- Batch read --- */
+  .batch-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+
+  .batch-controls .choose-btn,
+  .batch-controls .sim-btn {
+    margin-top: 0;
+    flex: 0 0 auto;
+    min-width: 150px;
+  }
+
+  .sim-btn.run-btn { background: var(--ok); color: #06231a; }
+
+  .batch-progress {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 20px 0 14px;
+  }
+
+  .batch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+
+  .batch-table thead th {
+    text-align: left;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--panel-border);
+    padding: 8px 10px;
+  }
+
+  .batch-table tbody td {
+    padding: 10px;
+    border-bottom: 1px solid var(--panel-border);
+    vertical-align: middle;
+  }
+
+  .batch-table tbody tr:last-child td { border-bottom: none; }
+
+  .batch-thumb {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    display: block;
+  }
+
+  .batch-name {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    word-break: break-all;
+  }
+
+  .batch-reading { font-weight: 700; }
+
+  .status-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .status-pill.OK { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+  .status-pill.VERIFY { background: var(--verify-bg); color: var(--verify); border: 1px solid var(--verify); }
+  .status-pill.ERROR { background: var(--error-bg); color: var(--error); border: 1px solid var(--error); }
+  .status-pill.has-reasons { cursor: help; border-style: dashed; }
+
+  .batch-empty {
+    color: var(--text-dim);
+    text-align: center;
+    padding: 22px 0;
+    font-size: 0.95rem;
+  }
+
+  .copy-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  .copy-row .choose-btn { margin-top: 0; }
+
+  .copy-note {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
   .spinner {
     width: 22px;
     height: 22px;
@@ -570,6 +699,31 @@
     .titlebar h1 { font-size: 1.4rem; }
     .cell-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
     .sim-actions { flex-direction: column; }
+
+    .batch-table, .batch-table thead, .batch-table tbody,
+    .batch-table tr, .batch-table td, .batch-table th { display: block; }
+    .batch-table thead { display: none; }
+    .batch-table tbody tr {
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      margin-bottom: 10px;
+      padding: 8px;
+    }
+    .batch-table tbody td {
+      border-bottom: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 4px;
+    }
+    .batch-table tbody td::before {
+      content: attr(data-label);
+      color: var(--text-dim);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
   }
 </style>
 </head>
@@ -580,7 +734,14 @@
   <p>Froth state, not recovery.</p>
 </div>
 
+<div class="view-toggle">
+  <button type="button" class="view-tab is-active" id="tabLive">Live monitor</button>
+  <button type="button" class="view-tab" id="tabBatch">Batch read</button>
+</div>
+
 <main>
+
+<div id="liveView">
 
   <section class="panel">
     <h2>Cell Wall</h2>
@@ -664,6 +825,37 @@
     </div>
   </details>
 
+</div>
+
+<div id="batchView" style="display:none;">
+
+  <section class="panel">
+    <h2>Batch Read</h2>
+    <p class="sim-note">Each frame is judged on its own. Batch reads are sent with reset, so they never write to a cell's committed state.</p>
+
+    <div class="batch-controls">
+      <button type="button" class="choose-btn" id="batchChooseFolderBtn">Choose folder</button>
+      <button type="button" class="sim-btn run-btn" id="batchRunBtn" disabled>Run</button>
+    </div>
+
+    <div id="batchFolderSummary">
+      <div class="folder-empty">No folder loaded.</div>
+    </div>
+
+    <div class="batch-progress" id="batchProgress" style="display:none;"></div>
+
+    <div id="batchResults">
+      <div class="batch-empty">No readings yet. Choose a folder and press Run.</div>
+    </div>
+
+    <div class="copy-row">
+      <button type="button" class="choose-btn" id="batchCopyCsvBtn" disabled>Copy as CSV</button>
+      <span class="copy-note" id="batchCopyNote"></span>
+    </div>
+  </section>
+
+</div>
+
 </main>
 
 <script>
@@ -704,6 +896,17 @@
   var folderProgress = document.getElementById("folderProgress");
   var devJson = document.getElementById("devJson");
   var devJsonContent = document.getElementById("devJsonContent");
+  var tabLive = document.getElementById("tabLive");
+  var tabBatch = document.getElementById("tabBatch");
+  var liveView = document.getElementById("liveView");
+  var batchView = document.getElementById("batchView");
+  var batchChooseFolderBtn = document.getElementById("batchChooseFolderBtn");
+  var batchRunBtn = document.getElementById("batchRunBtn");
+  var batchFolderSummary = document.getElementById("batchFolderSummary");
+  var batchProgress = document.getElementById("batchProgress");
+  var batchResults = document.getElementById("batchResults");
+  var batchCopyCsvBtn = document.getElementById("batchCopyCsvBtn");
+  var batchCopyNote = document.getElementById("batchCopyNote");
 
   var cellStates = {};
   CELLS.forEach(function (c) {
@@ -725,7 +928,7 @@
   var devMode = false;
   var lastRawResponse = null;
 
-  // mode is which engine currently owns frame sending: null | "continuous" | "folder"
+  // mode is which engine currently owns frame sending: null | "continuous" | "folder" | "batch"
   var mode = null;
   var folderFrames = []; // [{file, name, url}], sorted ascending by filename
   var folderIndex = 0;
@@ -733,10 +936,18 @@
   var folderTimer = null;
   var folderRunToken = 0;
 
+  var batchRows = [];
+  var batchToken = 0;
+
   function escapeHtml(str) {
     var div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // textContent serialisation leaves quotes intact, so attribute values need more
+  function escapeAttr(str) {
+    return escapeHtml(str).replace(/"/g, "&quot;");
   }
 
   function pad2(n) { return n < 10 ? "0" + n : String(n); }
@@ -881,14 +1092,20 @@
   function refreshControls() {
     var contBusy = mode === "continuous";
     var folderBusy = mode === "folder";
+    var batchBusy = mode === "batch";
+    var pickerLocked = (folderBusy && folderPlaying) || batchBusy;
 
-    sendBtn.disabled = !selectedBase64 || isSendRunning || contBusy || folderBusy;
-    continuousBtn.disabled = !selectedBase64 || folderBusy;
+    sendBtn.disabled = !selectedBase64 || isSendRunning || contBusy || folderBusy || batchBusy;
+    continuousBtn.disabled = !selectedBase64 || folderBusy || batchBusy;
 
-    chooseFolderBtn.disabled = folderBusy && folderPlaying;
-    folderPlayBtn.disabled = folderFrames.length === 0 || contBusy || (folderBusy && folderPlaying);
+    chooseFolderBtn.disabled = pickerLocked;
+    folderPlayBtn.disabled = folderFrames.length === 0 || contBusy || batchBusy || (folderBusy && folderPlaying);
     folderPauseBtn.disabled = !(folderBusy && folderPlaying);
     folderStopBtn.disabled = !folderBusy;
+
+    batchChooseFolderBtn.disabled = pickerLocked;
+    batchRunBtn.disabled = folderFrames.length === 0 || contBusy || folderBusy || batchBusy;
+    batchCopyCsvBtn.disabled = batchRows.length === 0;
   }
 
   function resetSelection() {
@@ -1074,8 +1291,9 @@
     renderCellWall();
   }
 
-  // --- Low-level POST, shared by manual send, continuous mode and folder playback ---
-  function postFrame(cell, base64, onDone) {
+  // --- Low-level POST. onDone gets {ok, data, responded, message, httpStatus};
+  //     responded is true whenever the webhook answered 200, parseable or not. ---
+  function postWebhook(body, onDone) {
     lastRawResponse = null;
     updateDevJsonView();
 
@@ -1089,7 +1307,7 @@
     fetch(WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cell: cell, image: base64 }),
+      body: JSON.stringify(body),
       signal: controller.signal
     })
       .then(function (response) {
@@ -1103,7 +1321,7 @@
         updateDevJsonView();
 
         if (!result.ok) {
-          onDone({ ok: false, message: "The system returned an error.", httpStatus: result.status });
+          onDone({ ok: false, responded: false, message: "The system returned an error.", httpStatus: result.status });
           return;
         }
 
@@ -1114,22 +1332,28 @@
           data = null;
         }
 
-        applyResponse(cell, data);
-
         if (data == null) {
-          onDone({ ok: false, message: "Malformed response from the system." });
+          onDone({ ok: false, responded: true, data: null, message: "Malformed response from the system." });
         } else {
-          onDone({ ok: true });
+          onDone({ ok: true, responded: true, data: data });
         }
       })
       .catch(function () {
         clearTimeout(timer);
         if (timedOut) {
-          onDone({ ok: false, message: "No response from the system — try again" });
+          onDone({ ok: false, responded: false, message: "No response from the system — try again" });
         } else {
-          onDone({ ok: false, message: "Network error — could not reach the analysis system." });
+          onDone({ ok: false, responded: false, message: "Network error — could not reach the analysis system." });
         }
       });
+  }
+
+  // --- Live-monitor POST: the response is written onto the cell wall ---
+  function postFrame(cell, base64, onDone) {
+    postWebhook({ cell: cell, image: base64 }, function (outcome) {
+      if (outcome.responded) applyResponse(cell, outcome.data);
+      onDone(outcome);
+    });
   }
 
   // --- Manual single-frame send / continuous mode ---
@@ -1211,20 +1435,24 @@
   }
 
   function renderFolderSummary(skippedForSize) {
+    var html;
+
     if (folderFrames.length === 0) {
       var sizeNote = skippedForSize ? " " + skippedForSize + " file(s) skipped — over 5 MB." : "";
-      folderSummary.innerHTML = '<div class="folder-empty">No supported images found in this folder.' + escapeHtml(sizeNote) + '</div>';
-      return;
+      html = '<div class="folder-empty">No supported images found in this folder.' + escapeHtml(sizeNote) + '</div>';
+    } else {
+      var stripHtml = folderFrames.map(function (f) {
+        return '<img class="folder-thumb-sm" src="' + f.url + '" alt="' + escapeAttr(f.name) + '" title="' + escapeAttr(f.name) + '">';
+      }).join("");
+
+      var countNote = skippedForSize ? " &middot; " + skippedForSize + " file(s) skipped — over 5 MB." : "";
+      html =
+        '<div class="folder-count">' + folderFrames.length + " frames loaded" + countNote + '</div>' +
+        '<div class="folder-strip">' + stripHtml + '</div>';
     }
 
-    var stripHtml = folderFrames.map(function (f) {
-      return '<img class="folder-thumb-sm" src="' + f.url + '" alt="' + escapeHtml(f.name) + '" title="' + escapeHtml(f.name) + '">';
-    }).join("");
-
-    var countNote = skippedForSize ? " &middot; " + skippedForSize + " file(s) skipped — over 5 MB." : "";
-    folderSummary.innerHTML =
-      '<div class="folder-count">' + folderFrames.length + " frames loaded" + countNote + '</div>' +
-      '<div class="folder-strip">' + stripHtml + '</div>';
+    folderSummary.innerHTML = html;
+    batchFolderSummary.innerHTML = html;
   }
 
   function handleFolderFiles(fileList) {
@@ -1233,8 +1461,12 @@
     folderRunToken++;
     folderPlaying = false;
     clearFolderTimer();
-    if (mode === "folder") mode = null;
+    if (mode === "folder" || mode === "batch") mode = null;
     folderProgress.innerHTML = "";
+
+    batchToken++;
+    batchRows = [];
+    batchCopyNote.textContent = "";
 
     revokeFolderUrls();
 
@@ -1266,7 +1498,7 @@
     folderIndex = 0;
 
     renderFolderSummary(skippedForSize);
-    refreshControls();
+    renderBatchResults();
   }
 
   chooseFolderBtn.addEventListener("click", function () {
@@ -1377,9 +1609,238 @@
   folderPauseBtn.addEventListener("click", pauseFolder);
   folderStopBtn.addEventListener("click", stopFolder);
 
+  // --- Batch read: judges each frame on its own, reads only `reading`,
+  //     and sends reset:true so nothing is written to a cell. ---
+  function readingClass(obs) {
+    return isPlainObject(obs) && obs.class != null ? String(obs.class) : null;
+  }
+
+  function readingConfidence(obs) {
+    return isPlainObject(obs) && obs.confidence != null ? obs.confidence : null;
+  }
+
+  function readingReasons(data, reading) {
+    var source = null;
+    if (isPlainObject(reading) && Array.isArray(reading.reasons)) source = reading.reasons;
+    else if (isPlainObject(data) && Array.isArray(data.reasons)) source = data.reasons;
+    if (!source) return [];
+    return source.map(function (r) { return String(r); });
+  }
+
+  function batchRowFromOutcome(frame, outcome) {
+    if (!outcome.ok) {
+      return {
+        name: frame.name,
+        url: frame.url,
+        sizeClass: null,
+        sizeConf: null,
+        colourClass: null,
+        colourConf: null,
+        status: "ERROR",
+        reasons: [outcome.message + (outcome.httpStatus ? " (HTTP " + outcome.httpStatus + ")" : "")]
+      };
+    }
+
+    var reading = isPlainObject(outcome.data) ? outcome.data.reading : null;
+    var status = isPlainObject(reading) &&
+      (reading.status === "OK" || reading.status === "VERIFY" || reading.status === "ERROR")
+      ? reading.status
+      : "ERROR";
+
+    return {
+      name: frame.name,
+      url: frame.url,
+      sizeClass: readingClass(isPlainObject(reading) ? reading.size : null),
+      sizeConf: readingConfidence(isPlainObject(reading) ? reading.size : null),
+      colourClass: readingClass(isPlainObject(reading) ? reading.colour : null),
+      colourConf: readingConfidence(isPlainObject(reading) ? reading.colour : null),
+      status: status,
+      reasons: readingReasons(outcome.data, reading)
+    };
+  }
+
+  function formatReadingCell(cls, conf) {
+    if (cls == null) return "&mdash;";
+    var confText = conf == null ? "&mdash;" : escapeHtml(String(conf)) + "%";
+    return escapeHtml(cls.toUpperCase()) + " &mdash; " + confText;
+  }
+
+  function renderBatchProgress() {
+    if (folderFrames.length === 0 && batchRows.length === 0) {
+      batchProgress.style.display = "none";
+      return;
+    }
+    batchProgress.style.display = "block";
+    batchProgress.textContent = batchRows.length + " of " + folderFrames.length + " read";
+  }
+
+  function renderBatchResults() {
+    renderBatchProgress();
+
+    if (batchRows.length === 0) {
+      batchResults.innerHTML = '<div class="batch-empty">No readings yet. Choose a folder and press Run.</div>';
+      batchCopyNote.textContent = "";
+      refreshControls();
+      return;
+    }
+
+    var rows = batchRows.map(function (r) {
+      var reasonsText = r.reasons.join(" · ");
+      var pillClass = "status-pill " + r.status + (reasonsText ? " has-reasons" : "");
+      var titleAttr = reasonsText ? ' title="' + escapeAttr(reasonsText) + '"' : "";
+      return (
+        "<tr>" +
+        '<td data-label="Frame"><img class="batch-thumb" src="' + r.url + '" alt="' + escapeAttr(r.name) + '"></td>' +
+        '<td data-label="Filename"><span class="batch-name">' + escapeHtml(r.name) + "</span></td>" +
+        '<td data-label="Size"><span class="batch-reading">' + formatReadingCell(r.sizeClass, r.sizeConf) + "</span></td>" +
+        '<td data-label="Colour"><span class="batch-reading">' + formatReadingCell(r.colourClass, r.colourConf) + "</span></td>" +
+        '<td data-label="Status"><span class="' + pillClass + '"' + titleAttr + ">" + escapeHtml(r.status) + "</span></td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    batchResults.innerHTML =
+      '<table class="batch-table"><thead><tr>' +
+      "<th>Frame</th><th>Filename</th><th>Size</th><th>Colour</th><th>Status</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table>";
+
+    refreshControls();
+  }
+
+  function batchStep(token, idx) {
+    if (token !== batchToken) return;
+
+    if (idx >= folderFrames.length) {
+      if (mode === "batch") mode = null;
+      refreshControls();
+      return;
+    }
+
+    var frame = folderFrames[idx];
+
+    readFileAsBase64(frame.file, function (base64) {
+      if (token !== batchToken) return;
+
+      if (base64 == null) {
+        batchRows.push({
+          name: frame.name,
+          url: frame.url,
+          sizeClass: null,
+          sizeConf: null,
+          colourClass: null,
+          colourConf: null,
+          status: "ERROR",
+          reasons: ["Could not read file."]
+        });
+        renderBatchResults();
+        batchStep(token, idx + 1);
+        return;
+      }
+
+      postWebhook({ cell: cellSelect.value, image: base64, reset: true }, function (outcome) {
+        if (token !== batchToken) return;
+        batchRows.push(batchRowFromOutcome(frame, outcome));
+        renderBatchResults();
+        batchStep(token, idx + 1);
+      });
+    });
+  }
+
+  function runBatch() {
+    if (folderFrames.length === 0 || mode != null) return;
+    mode = "batch";
+    batchToken++;
+    batchRows = [];
+    batchCopyNote.textContent = "";
+    renderBatchResults();
+    batchStep(batchToken, 0);
+  }
+
+  function buildBatchCsv() {
+    var header = ["filename", "size", "size_confidence", "colour", "colour_confidence", "status", "reasons"];
+    var lines = [header.join(",")];
+
+    batchRows.forEach(function (r) {
+      lines.push([
+        csvCell(r.name),
+        csvCell(r.sizeClass == null ? "" : r.sizeClass),
+        csvCell(r.sizeConf == null ? "" : r.sizeConf),
+        csvCell(r.colourClass == null ? "" : r.colourClass),
+        csvCell(r.colourConf == null ? "" : r.colourConf),
+        csvCell(r.status),
+        csvCell(r.reasons.join("; "))
+      ].join(","));
+    });
+
+    return lines.join("\r\n");
+  }
+
+  function csvCell(value) {
+    var s = value == null ? "" : String(value);
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    var copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch (err) {
+      copied = false;
+    }
+    document.body.removeChild(ta);
+    return copied;
+  }
+
+  function reportCopy(copied) {
+    batchCopyNote.textContent = copied
+      ? "Copied " + batchRows.length + " rows to the clipboard."
+      : "Could not copy — select the table and copy by hand.";
+  }
+
+  batchCopyCsvBtn.addEventListener("click", function () {
+    if (batchRows.length === 0) return;
+    var csv = buildBatchCsv();
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(csv).then(
+        function () { reportCopy(true); },
+        function () { reportCopy(fallbackCopy(csv)); }
+      );
+      return;
+    }
+
+    reportCopy(fallbackCopy(csv));
+  });
+
+  batchChooseFolderBtn.addEventListener("click", function () {
+    folderInput.click();
+  });
+
+  batchRunBtn.addEventListener("click", runBatch);
+
+  // --- View toggle ---
+  function setView(view) {
+    var isBatch = view === "batch";
+    liveView.style.display = isBatch ? "none" : "";
+    batchView.style.display = isBatch ? "" : "none";
+    tabLive.classList.toggle("is-active", !isBatch);
+    tabBatch.classList.toggle("is-active", isBatch);
+  }
+
+  tabLive.addEventListener("click", function () { setView("live"); });
+  tabBatch.addEventListener("click", function () { setView("batch"); });
+
   renderCellWall();
   renderEventLog();
   clearSendStatus();
+  renderBatchResults();
   refreshControls();
 })();
 </script>
